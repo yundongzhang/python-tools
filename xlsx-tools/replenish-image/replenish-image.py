@@ -11,7 +11,11 @@ from io import BytesIO
 
 
 class ImageColumnApp:
+
     def __init__(self, root):
+        self.skip = 0
+        self.skip_row = []
+
         self.root = root
         self.root.title("REPLENISH-IMAGE")
         
@@ -44,13 +48,19 @@ class ImageColumnApp:
         self.label3 = tk.Label(root, textvariable=self.process_label)
         self.label3.pack()
 
+        self.skip_label = tk.StringVar()
+        self.skip_label.set("")
+
+        self.label4 = tk.Label(root, textvariable=self.skip_label)
+        self.label4.pack()
+
     def browse_file(self):
         file_path = filedialog.askopenfilename(filetypes=[("Excel files", "*.xlsx")])
         self.file_path.set(file_path)
 
     def download_image(self, url):
         try:
-            response = requests.get(url, timeout=5000)
+            response = requests.get(url, timeout=5)
             if response.status_code == 200:
                 content_type = response.headers.get('content-type')
                 new_image = PILImage.open(BytesIO(response.content))
@@ -63,6 +73,7 @@ class ImageColumnApp:
             return None
         except Exception as e:
             print(str(e))
+            self.skip = self.skip + 1
             pass
         return None
 
@@ -85,6 +96,7 @@ class ImageColumnApp:
                 messagebox.showerror("Error", str(e))
 
     def process_excel(self):
+        self.skip = 0
         file_path = self.file_path.get()
         column = self.get_column_index()
         try:
@@ -94,12 +106,10 @@ class ImageColumnApp:
 
             image_column = sheet.max_column + 1
 
-            success = 0
-            fail = 0
-
             # Inside the loop where you add images:
             for row in range(2, max_row + 1):
                 self.process_label.set("Processing, row number: " + str(row))
+                self.skip_label.set("Skip row number " + str(self.skip))
                 try:
                     url_cell = sheet.cell(row=row, column=column)
                     image_url = url_cell.value
@@ -112,6 +122,8 @@ class ImageColumnApp:
                             img.width = 150
                             img.height = 150
                             sheet.add_image(img, img_cell.coordinate)
+                        else:
+                            self.skip_row.pop(row)
 
                 except Exception as e:
                     print("Error:", str(e))  # Print error to console

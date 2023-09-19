@@ -2,6 +2,7 @@ import threading
 import tkinter as tk
 from datetime import datetime
 from tkinter import filedialog, messagebox
+import openpyxl
 import requests
 from PIL import Image as PILImage
 from openpyxl import load_workbook
@@ -14,11 +15,10 @@ class ImageColumnApp:
 
     def __init__(self, root):
         self.skip = 0
-        self.skip_row = []
 
         self.root = root
         self.root.title("REPLENISH-IMAGE")
-        
+
         root.geometry(f"{200}x{250}")
 
         self.file_path = tk.StringVar()
@@ -62,21 +62,22 @@ class ImageColumnApp:
         try:
             response = requests.get(url, timeout=5)
             if response.status_code == 200:
-                content_type = response.headers.get('content-type')
                 new_image = PILImage.open(BytesIO(response.content))
                 if 'WEBP' in new_image.format:
                     new_image = new_image.convert("RGB")
                     img_data = BytesIO()
                     new_image.save(img_data, format="JPEG")
                     return Image(img_data)
-                return Image(new_image)
+                elif 'MPO' in new_image.format:
+                    return None
+                else:
+                    return Image(new_image)
             return None
         except Exception as e:
             print(str(e))
             self.skip = self.skip + 1
             pass
         return None
-
 
     def get_column_index(self):
         file_path = self.file_path.get()
@@ -109,7 +110,7 @@ class ImageColumnApp:
             # Inside the loop where you add images:
             for row in range(2, max_row + 1):
                 self.process_label.set("Processing, row number: " + str(row))
-                self.skip_label.set("Skip row number " + str(self.skip))
+                self.skip_label.set("Skip row number: " + str(self.skip))
                 try:
                     url_cell = sheet.cell(row=row, column=column)
                     image_url = url_cell.value
@@ -123,7 +124,8 @@ class ImageColumnApp:
                             img.height = 150
                             sheet.add_image(img, img_cell.coordinate)
                         else:
-                            self.skip_row.pop(row)
+                            for cell in sheet[row]:
+                                cell.fill = openpyxl.styles.PatternFill(start_color='FFFF00', end_color='FFFF00', fill_type='solid')
 
                 except Exception as e:
                     print("Error:", str(e))  # Print error to console
@@ -132,13 +134,13 @@ class ImageColumnApp:
             current_time = datetime.now().strftime("%Y%m%d%H%M%S")
             new_file_path = file_path.replace(".xlsx", f"_{current_time}_with_images.xlsx")
 
-
             workbook.save(new_file_path)
             workbook.close()
 
             messagebox.showinfo("Success", "Images added to the new column!")
             self.process_label.set("Success!")
         except Exception as e:
+            print("Error:", str(e))
             messagebox.showerror("Error", str(e))
             self.process_label.set("Fail!")
 

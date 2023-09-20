@@ -70,9 +70,7 @@ class ImageColumnApp:
                     return Image(img_data)
                 elif 'MPO' in new_image.format:
                     return None
-                else:
-                    return Image(new_image)
-            return None
+                return Image(new_image)
         except Exception as e:
             print(str(e))
             self.skip = self.skip + 1
